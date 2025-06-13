@@ -18,7 +18,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release-type: node
-          package-name: foundry-mcp-server
 
       # Publish to npm if a release was created
       - uses: actions/checkout@v4
