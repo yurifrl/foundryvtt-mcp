@@ -1,0 +1,29 @@
+{
+  "foundry-local-rest-api": {
+    "settings": {
+      "api-key": {
+        "name": "API Key",
+        "hint": "Generate and store an API key for external applications to authenticate with this REST API"
+      },
+      "enable-api": {
+        "name": "Enable REST API",
+        "hint": "Enable or disable the local REST API endpoints"
+      },
+      "api-port": {
+        "name": "API Port",
+        "hint": "Port number for the REST API (leave empty to use FoundryVTT's main port)"
+      },
+      "log-requests": {
+        "name": "Log API Requests",
+        "hint": "Log all incoming API requests for debugging purposes"
+      }
+    },
+    "notifications": {
+      "api-enabled": "Local REST API enabled on port {port}",
+      "api-disabled": "Local REST API disabled",
+      "invalid-api-key": "Invalid API key provided",
+      "api-key-generated": "New API key generated: {key}",
+      "unauthorized": "Unauthorized API access attempt"
+    }
+  }
+}

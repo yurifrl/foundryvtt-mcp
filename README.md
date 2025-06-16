@@ -65,18 +65,70 @@ npm run dev
 
 ## FoundryVTT Configuration
 
-### Option 1: API Key (Recommended)
-1. In FoundryVTT, go to Settings → Configure Settings
-2. Enable "Enable API Access" 
-3. Generate an API key for external access
-4. Add the key to your `.env` file
+The MCP server supports three authentication methods, listed from most secure to least secure:
 
-### Option 2: Username/Password
+### Option 1: Local REST API Module (🔒 Recommended)
+
+**Benefits:**
+- ✅ **100% Local** - No external dependencies or third-party services
+- ✅ **Maximum Privacy** - Your game data never leaves your network
+- ✅ **Full Control** - You own and manage all authentication
+- ✅ **Better Performance** - Direct local API access
+- ✅ **More Reliable** - No external service downtime
+
+**Setup:**
+1. Install the **Foundry Local REST API** module:
+   - In FoundryVTT: **Setup** → **Add-on Modules** → **Install Module**
+   - Paste: `https://github.com/lgates/foundryvtt-mcp/releases/latest/download/module.json`
+2. Enable the module in your world
+3. Go to **Settings** → **Configure Settings** → **Module Settings**
+4. Find **"Foundry Local REST API"** and check **"Enable REST API"**
+5. Copy the generated **API Key**
+6. Add to your `.env` file:
+   ```env
+   FOUNDRY_URL=http://localhost:30000
+   FOUNDRY_API_KEY=your_local_api_key_here
+   USE_REST_MODULE=false  # Use local module instead
+   ```
+
+### Option 2: Third-Party REST API Module
+
+**⚠️ Privacy Notice:** This option sends your game data through external relay servers.
+
+1. Install the **Foundry REST API** module from the community
+2. Get an API key from the third-party service
+3. Configure the module with the external API key
+4. Add to your `.env` file:
+   ```env
+   FOUNDRY_URL=http://localhost:30000
+   FOUNDRY_API_KEY=your_external_api_key_here
+   USE_REST_MODULE=true
+   ```
+
+### Option 3: Username/Password (Fallback)
+
+**Limited functionality** - Some features may not work properly.
+
 1. Ensure your FoundryVTT user has appropriate permissions
-2. Add credentials to `.env` file
-3. The server will authenticate automatically
+2. Add credentials to `.env` file:
+   ```env
+   FOUNDRY_URL=http://localhost:30000
+   FOUNDRY_USERNAME=your_username
+   FOUNDRY_PASSWORD=your_password
+   ```
 
-### Permissions Required
+### Comparison Table
+
+| Feature | **Local Module** | Third-Party Module | Username/Password |
+|---------|------------------|-------------------|-------------------|
+| **Privacy** | ✅ 100% Local | ❌ External relay | ✅ Local |
+| **Security** | ✅ Your keys only | ❌ External keys | ⚠️ Password auth |
+| **Reliability** | ✅ No external deps | ❌ Service dependent | ✅ Direct connection |
+| **Performance** | ✅ Direct access | ❌ Network latency | ⚠️ Limited features |
+| **Full Features** | ✅ Complete API | ✅ Complete API | ❌ Basic only |
+| **Setup Complexity** | ⚠️ Module install | ⚠️ External signup | ✅ Simple |
+
+### Required Permissions (All Methods)
 Your FoundryVTT user needs these permissions:
 - View actors, items, scenes, and journals
 - Create and modify journal entries (for content generation)
