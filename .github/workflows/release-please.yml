@@ -17,7 +17,8 @@ jobs:
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: node
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
       # Publish to npm if a release was created
       - uses: actions/checkout@v4
@@ -44,3 +45,19 @@ jobs:
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Build and upload FoundryVTT module artifacts if module was released
+      - name: Create FoundryVTT module zip
+        if: ${{ steps.release.outputs['foundry-local-rest-api--release_created'] }}
+        run: |
+          cd foundry-local-rest-api
+          zip -r ../foundry-local-rest-api.zip . -x "*.git*" "node_modules/*" "*.DS_Store*"
+          cd ..
+
+      - name: Upload FoundryVTT module artifacts
+        if: ${{ steps.release.outputs['foundry-local-rest-api--release_created'] }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME=${{ steps.release.outputs['foundry-local-rest-api--tag_name'] }}
+          gh release upload "${TAG_NAME}" foundry-local-rest-api.zip foundry-local-rest-api/module.json

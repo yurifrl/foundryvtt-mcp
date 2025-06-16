@@ -9,7 +9,8 @@
   },
   "authors": [
     {
-      "name": "FoundryVTT MCP Team"
+      "name": "FoundryVTT MCP Team",
+      "email": "support@example.com"
     }
   ],
   "scripts": [
