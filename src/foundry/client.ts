@@ -236,7 +236,19 @@ export class FoundryClient {
   private handleWebSocketMessage(message: any): void {
     logger.debug('WebSocket message received:', message);
 
-    // Handle different message types
+    // Call registered message handlers first
+    if (this.messageHandlers && this.messageHandlers.has(message.type)) {
+      const handler = this.messageHandlers.get(message.type);
+      if (handler) {
+        try {
+          handler(message.data);
+        } catch (error) {
+          logger.error('Error in message handler:', error);
+        }
+      }
+    }
+
+    // Handle built-in message types
     switch (message.type) {
       case 'combatUpdate':
         logger.info('Combat state updated');
