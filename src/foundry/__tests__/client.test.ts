@@ -267,6 +267,7 @@ describe('FoundryClient', () => {
 
       mockWebSocket.mockImplementation(() => mockWs);
 
+      // Don't provide API key to force WebSocket mode
       client = new FoundryClient({
         baseUrl: 'http://localhost:30000',
         // No apiKey - this will use WebSocket mode
@@ -282,6 +283,9 @@ describe('FoundryClient', () => {
       });
 
       await client.connect();
+      
+      // Wait for async connection to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       const message = { type: 'test', data: { hello: 'world' } };
       client.sendMessage(message);
