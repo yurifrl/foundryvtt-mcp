@@ -8,7 +8,7 @@
  * @author FoundryVTT MCP Team
  */
 
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 import WebSocket from 'ws';
 import { logger } from '../utils/logger.js';
 import { FoundryActor, FoundryScene, FoundryWorld, DiceRoll, ActorSearchResult, ItemSearchResult } from './types.js';
@@ -103,7 +103,7 @@ export interface WebSocketMessage {
   /** Message type identifier */
   type: string;
   /** Optional message data payload */
-  data?: any;
+  data?: unknown;
 }
 
 /**
@@ -137,12 +137,13 @@ const MAX_WEBSOCKET_MESSAGE_SIZE = 1024 * 1024; // 1MB
  * @param obj - Object to validate
  * @returns True if the object is a valid WebSocket message
  */
-function isValidWebSocketMessage(obj: any): obj is WebSocketMessage {
-  return obj && 
-         typeof obj === 'object' && 
-         typeof obj.type === 'string' && 
-         obj.type.length > 0 &&
-         obj.type.length < 100; // Prevent extremely long type strings
+function isValidWebSocketMessage(obj: unknown): obj is WebSocketMessage {
+  return typeof obj === 'object' && 
+         obj !== null && 
+         'type' in obj &&
+         typeof (obj as Record<string, unknown>).type === 'string' && 
+         ((obj as Record<string, unknown>).type as string).length > 0 &&
+         ((obj as Record<string, unknown>).type as string).length < 100; // Prevent extremely long type strings
 }
 
 export class FoundryClient {
@@ -285,7 +286,7 @@ export class FoundryClient {
    * @param message - The WebSocket message object
    * @private
    */
-  private handleWebSocketMessage(message: any): void {
+  private handleWebSocketMessage(message: WebSocketMessage): void {
     logger.debug('WebSocket message received:', message);
 
     // Call registered message handlers first
@@ -306,10 +307,10 @@ export class FoundryClient {
         logger.info('Combat state updated');
         break;
       case 'actorUpdate':
-        logger.info('Actor updated:', message.data?.name);
+        logger.info('Actor updated:', (message.data as Record<string, unknown>)?.name);
         break;
       case 'sceneUpdate':
-        logger.info('Scene updated:', message.data?.name);
+        logger.info('Scene updated:', (message.data as Record<string, unknown>)?.name);
         break;
       default:
         logger.debug('Unknown WebSocket message type:', message.type);
@@ -365,7 +366,7 @@ export class FoundryClient {
    * @throws {Error} If all retry attempts fail
    */
   private async executeWithRetry<T>(operation: () => Promise<T>): Promise<T> {
-    let lastError: Error;
+    let lastError: Error | undefined;
     const maxAttempts = (this.config.retryAttempts || 3) + 1; // Include initial attempt
     const baseDelay = this.config.retryDelay || 1000;
     
@@ -376,9 +377,8 @@ export class FoundryClient {
         lastError = error as Error;
         
         // Don't retry client errors (4xx) except for 429 (rate limiting)
-        if (error && typeof error === 'object' && 'response' in error) {
-          const axiosError = error as any;
-          if (axiosError.response?.status >= 400 && axiosError.response?.status < 500 && axiosError.response?.status !== 429) {
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status && error.response.status >= 400 && error.response.status < 500 && error.response.status !== 429) {
             throw lastError;
           }
         }
@@ -400,7 +400,7 @@ export class FoundryClient {
       }
     }
     
-    throw lastError!;
+    throw lastError || new Error('Request failed after all retry attempts');
   }
 
   /**
@@ -446,7 +446,7 @@ export class FoundryClient {
    * });
    * ```
    */
-  sendMessage(message: any): void {
+  sendMessage(message: WebSocketMessage): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
@@ -535,7 +535,7 @@ export class FoundryClient {
         const result: DiceRoll = {
           formula,
           total: response.data.total,
-          breakdown: response.data.terms?.map((term: any) => term.results?.join(', ')).join(' + ') || formula,
+          breakdown: response.data.terms?.map((term: { results?: number[] }) => term.results?.join(', ')).join(' + ') || formula,
           timestamp: new Date().toISOString(),
         };
         if (reason) {
@@ -658,9 +658,9 @@ export class FoundryClient {
       try {
         const response = await this.http.get(`/api/actors/${actorId}`);
         return response.data;
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Preserve 404 errors as meaningful actor not found errors
-        if (error.response?.status === 404) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
           throw new Error(`Actor not found: ${actorId}`);
         }
         // Re-throw other errors for retry handling
@@ -736,9 +736,9 @@ export class FoundryClient {
         const endpoint = sceneId ? `/api/scenes/${sceneId}` : '/api/scenes/current';
         const response = await this.http.get(endpoint);
         return response.data;
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Preserve 404 errors as meaningful scene not found errors
-        if (error.response?.status === 404) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
           throw new Error('Scene not found');
         }
         // Re-throw other errors for retry handling
@@ -901,7 +901,7 @@ export class FoundryClient {
    * console.log(response.data);
    * ```
    */
-  async get(url: string, config?: any): Promise<any> {
+  async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.executeWithRetry(async () => {
       return await this.http.get(url, config);
     });
@@ -920,7 +920,7 @@ export class FoundryClient {
    * console.log(response.data);
    * ```
    */
-  async post(url: string, data?: any, config?: any): Promise<any> {
+  async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.executeWithRetry(async () => {
       return await this.http.post(url, data, config);
     });
@@ -934,7 +934,7 @@ export class FoundryClient {
    * @param config - Optional axios request configuration
    * @returns Promise resolving to the response
    */
-  async put(url: string, data?: any, config?: any): Promise<any> {
+  async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.executeWithRetry(async () => {
       return await this.http.put(url, data, config);
     });
@@ -947,7 +947,7 @@ export class FoundryClient {
    * @param config - Optional axios request configuration
    * @returns Promise resolving to the response
    */
-  async delete(url: string, config?: any): Promise<any> {
+  async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.executeWithRetry(async () => {
       return await this.http.delete(url, config);
     });

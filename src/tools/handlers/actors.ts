@@ -11,12 +11,23 @@ import { logger } from '../../utils/logger.js';
 /**
  * Handles actor search requests
  */
-export async function handleSearchActors(args: any, foundryClient: FoundryClient) {
+export async function handleSearchActors(args: {
+  query?: string;
+  type?: string;
+  limit?: number;
+}, foundryClient: FoundryClient) {
   const { query, type, limit = 10 } = args;
 
   try {
     logger.info('Searching actors', { query, type, limit });
-    const result = await foundryClient.searchActors({ query, type, limit });
+    const searchParams: { query: string; type?: string; limit: number } = { 
+      query: query || '',
+      limit 
+    };
+    if (type) {
+      searchParams.type = type;
+    }
+    const result = await foundryClient.searchActors(searchParams);
 
     const actorList = result.actors.map(actor => 
       `- **${actor.name}** (${actor.type}) - Level ${actor.level || 'Unknown'} - HP: ${actor.hp?.value || 'Unknown'}/${actor.hp?.max || 'Unknown'}`
@@ -49,7 +60,9 @@ ${actorList || 'No actors found matching the criteria.'}
 /**
  * Handles detailed actor information requests
  */
-export async function handleGetActorDetails(args: any, foundryClient: FoundryClient) {
+export async function handleGetActorDetails(args: {
+  actorId: string;
+}, foundryClient: FoundryClient) {
   const { actorId } = args;
 
   if (!actorId || typeof actorId !== 'string') {
@@ -61,7 +74,7 @@ export async function handleGetActorDetails(args: any, foundryClient: FoundryCli
     const actor = await foundryClient.getActor(actorId);
 
     const abilities = actor.abilities ? Object.entries(actor.abilities)
-      .map(([key, ability]: [string, any]) => `**${key.toUpperCase()}:** ${ability.value} (${ability.mod >= 0 ? '+' : ''}${ability.mod})`)
+      .map(([key, ability]: [string, { value: number; mod: number }]) => `**${key.toUpperCase()}:** ${ability.value} (${ability.mod >= 0 ? '+' : ''}${ability.mod})`)
       .join('\n') : 'No ability scores available';
 
     return {
@@ -77,7 +90,7 @@ export async function handleGetActorDetails(args: any, foundryClient: FoundryCli
 **Ability Scores:**
 ${abilities}
 
-**Description:** ${(actor as any).description || 'No description available.'}`,
+**Description:** ${(actor as { description?: string }).description || 'No description available.'}`,
         },
       ],
     };
