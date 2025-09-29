@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "foundry": {
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@yurifrl/foundryvtt-mcp-server"
+      ],
+      "env": {
+        "FOUNDRY_URL": "https://foundry.syscd.tech/",
+        "FOUNDRY_API_KEY": "$FOUNDRY_API_KEY"
+      }
+    }
+  }
+}
